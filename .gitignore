@@ -9,6 +9,14 @@
 !/requirements.txt
 !/WA_Fn-UseC_-Telco-Customer-Churn.csv
 
+# Screenshots embedded in README.
+!/docs/
+/docs/*
+!/docs/images/
+/docs/images/*
+!/docs/images/churn-simulator.png
+!/docs/images/insight-dashboard.png
+
 # Streamlit settings; do not include secrets.toml.
 !/.streamlit/
 /.streamlit/*
