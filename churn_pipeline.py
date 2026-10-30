@@ -1,5 +1,6 @@
 """Telco churn: 80% train / 20% test. Selection uses training-only CV.
-Run: python churn_pipeline.py --out outputs_80_20
+Run: python churn_pipeline.py --out outputs_cli
+Shared learning functions are also imported by churn_analysis.ipynb.
 """
 import argparse
 import hashlib
@@ -19,7 +20,7 @@ from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (accuracy_score, average_precision_score, confusion_matrix,
     f1_score, precision_score, recall_score, roc_auc_score)
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from xgboost import XGBClassifier
@@ -42,24 +43,31 @@ def load_and_clean(csv_path):
     df['SeniorCitizen'] = df['SeniorCitizen'].astype(str)
     return df.drop(columns='customerID')
 
+
 def split_data(df):
     """One holdout split; CV validation folds stay inside training data."""
     X, y = df.drop(columns='Churn'), df['Churn']
     return train_test_split(X, y, test_size=0.20, random_state=SEED, stratify=y)
+
 
 def make_features(X, variant='original'):
     """Row-wise formulas use neither targets nor dataset statistics."""
     result = X.copy()
     if variant == 'drop_phone':
         return result.drop(columns='PhoneService')
-    if variant == 'engineered':
+    allowed = ['original', 'tenure_band', 'average_charge', 'charge_gap', 'engineered']
+    if variant not in allowed:
+        raise ValueError(variant)
+    if variant in ['tenure_band', 'engineered']:
         result['TenureBand'] = pd.cut(result['tenure'], [-1, 12, 24, 48, np.inf],
             labels=['0-12', '13-24', '25-48', '49+']).astype(str)
-        result['AvgChargePerMonth'] = result['TotalCharges'].div(result['tenure'].replace(0, np.nan))
-        result['ChargeGap'] = result['MonthlyCharges'] - result['AvgChargePerMonth']
-    elif variant != 'original':
-        raise ValueError(variant)
+    average = result['TotalCharges'].div(result['tenure'].replace(0, np.nan))
+    if variant in ['average_charge', 'engineered']:
+        result['AvgChargePerMonth'] = average
+    if variant in ['charge_gap', 'engineered']:
+        result['ChargeGap'] = result['MonthlyCharges'] - average
     return result
+
 
 def make_preprocessor(X):
     numerical = X.select_dtypes(include='number').columns.tolist()
@@ -70,8 +78,10 @@ def make_preprocessor(X):
         ('categorical', Pipeline([('imputer', SimpleImputer(strategy='most_frequent')),
             ('encoder', OneHotEncoder(drop='first', handle_unknown='ignore'))]), categorical)])
 
+
 def make_pipeline(X, model):
     return Pipeline([('preprocessor', make_preprocessor(X)), ('model', model)])
+
 
 def xgb_model(**settings):
     params = dict(n_estimators=300, max_depth=3, learning_rate=0.05,
@@ -81,11 +91,13 @@ def xgb_model(**settings):
     params.update(settings)
     return XGBClassifier(**params)
 
+
 def baseline_models():
     return {'LogisticRegression': LogisticRegression(max_iter=2000),
         'RandomForest': RandomForestClassifier(n_estimators=300, max_depth=8,
             min_samples_leaf=5, random_state=SEED, n_jobs=2),
         'XGBoost': xgb_model()}
+
 
 def metric_scores(y, probabilities):
     predicted = (np.asarray(probabilities) >= 0.5).astype(int)
@@ -135,6 +147,12 @@ def compare_candidates(X_train, y_train, out):
             if depth == 3 and trees == 300:
                 continue  # Same settings as baseline: reuse its CV score.
             specs[f'XGB_depth{depth}_trees{trees}'] = ('original', xgb_model(max_depth=depth, n_estimators=trees))
+    # 한 번에 하나씩 바꿔야 어떤 변경의 결과인지 설명하기 쉽습니다.
+    for variant in ['tenure_band', 'average_charge', 'charge_gap']:
+        specs['XGB_' + variant] = (variant, xgb_model())
+    specs['RF_balanced'] = ('original', RandomForestClassifier(
+        n_estimators=300, max_depth=8, min_samples_leaf=5,
+        class_weight='balanced', random_state=SEED, n_jobs=2))
     rows, predictions, importance = [], {}, None
     for name, (variant, model) in specs.items():
         print(f'CV: {name}', flush=True)
@@ -149,6 +167,63 @@ def compare_candidates(X_train, y_train, out):
     importance.to_csv(out / 'cv_permutation_importance.csv', index=False, encoding='utf-8-sig')
     pd.DataFrame(predictions, index=X_train.index).to_csv(out / 'cv_oof_predictions.csv')
     return specs, table, importance
+
+
+def run_grid_searches(X_train, y_train, specs, cv_table, out):
+    """Fit the fixed search spaces using training data only; save every setting."""
+    out = Path(out)
+    # 1. 후보 범위를 미리 정합니다. 테스트 결과를 보고 범위를 수정하지 않습니다.
+    search_spaces = {
+        'RF_GridSearch': (baseline_models()['RandomForest'], {
+            'model__n_estimators': [150, 300],
+            'model__max_depth': [4, 8],
+            'model__min_samples_leaf': [2, 5],
+        }),
+        'XGB_GridSearch': (xgb_model(), {
+            'model__n_estimators': [150, 300],
+            'model__max_depth': [2, 3],
+            'model__learning_rate': [0.03, 0.05],
+            'model__reg_lambda': [1, 5],
+        }),
+    }
+    searches = {}
+    tuning_results = {}
+    for name, (base_model, param_grid) in search_spaces.items():
+        print('자동 튜닝:', name, flush=True)
+        # 2. 원본 학습 80%만 전달합니다. 전처리도 fold 안에서 fit합니다.
+        search = GridSearchCV(
+            estimator=make_pipeline(X_train, clone(base_model)),
+            param_grid=param_grid,
+            scoring={'AUC': 'roc_auc', 'Recall': 'recall', 'F1': 'f1'},
+            refit='AUC',
+            cv=StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=SEED),
+            n_jobs=1, error_score='raise', return_train_score=True,
+        )
+        search.fit(X_train, y_train)
+        searches[name] = search
+        # 3. 가장 좋은 설정의 모델을 기존 후보 목록에 추가합니다.
+        best_model = clone(search.best_estimator_.named_steps['model'])
+        specs[name] = ('original', best_model)
+        scores, oof, _ = cv_experiment(X_train, y_train, best_model)
+        np.testing.assert_allclose(scores['CV_AUC_mean'], search.best_score_, atol=1e-12)
+        cv_table.loc[name] = {'Variant': 'original', **scores}
+        oof_table = pd.read_csv(out/'cv_oof_predictions.csv', index_col=0)
+        np.testing.assert_array_equal(oof_table.index, X_train.index)
+        oof_table[name] = oof
+        oof_table.to_csv(out/'cv_oof_predictions.csv')
+        details = pd.DataFrame(search.cv_results_)
+        cols = ['params', 'mean_test_AUC', 'std_test_AUC', 'mean_test_Recall',
+                'mean_test_F1', 'mean_train_AUC', 'rank_test_AUC']
+        tuning_results[name] = details[cols].sort_values('rank_test_AUC')
+        print('선택한 설정:', search.best_params_)
+        print('최고 평균 CV AUC:', round(search.best_score_, 4))
+        tables = out / 'notebook_tables'
+        tables.mkdir(parents=True, exist_ok=True)
+        tuning_results[name].to_csv(tables / (name + '_results.csv'), index=False, encoding='utf-8-sig')
+    cv_table = cv_table.sort_values('CV_AUC_mean', ascending=False, kind='stable')
+    # 기존 CV 결과 파일에 추가 후보도 반영합니다.
+    cv_table.to_csv(out/'cv_comparison.csv', encoding='utf-8-sig')
+    return specs, cv_table, searches, tuning_results
 
 def final_evaluation(X_train, X_test, y_train, y_test, specs, table, out):
     """Lock selection on CV before examining any test outcome."""
@@ -192,6 +267,7 @@ def final_evaluation(X_train, X_test, y_train, y_test, specs, table, out):
     (out / 'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
     return test, fitted, summary
 
+
 def run(csv_path, out):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -202,6 +278,10 @@ def run(csv_path, out):
     pd.DataFrame({'RowIndex': df.index, 'Split': np.where(df.index.isin(X_train.index),
         'Train', 'Test')}).to_csv(out / 'split_membership.csv', index=False)
     specs, table, importance = compare_candidates(X_train, y_train, out)
+    specs, table, _, _ = run_grid_searches(X_train, y_train, specs, table, out)
+    selection = dict(selected_name=table.index[0], variant=specs[table.index[0]][0],
+        criterion='highest mean training 3-fold ROC-AUC', threshold=0.5)
+    (out/'selection_before_test.json').write_text(json.dumps(selection, indent=2), encoding='utf-8')
     print(table.round(4).to_string(), flush=True)
     test, fitted, summary = final_evaluation(X_train, X_test, y_train, y_test, specs, table, out)
     metadata = dict(python=platform.python_version(), pandas=pd.__version__,
@@ -218,7 +298,7 @@ def run(csv_path, out):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--csv', type=Path, default=Path(__file__).parent / 'WA_Fn-UseC_-Telco-Customer-Churn.csv')
-    parser.add_argument('--out', type=Path, default=Path(__file__).parent / 'outputs_80_20')
+    parser.add_argument('--out', type=Path, default=Path(__file__).parent / 'outputs_cli')
     args = parser.parse_args()
     run(args.csv, args.out)
 

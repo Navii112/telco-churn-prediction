@@ -1,78 +1,59 @@
 [
   {
-    "figure": "figure_01.png",
-    "cell": 15
+    "figure": "01_target_distribution.png"
   },
   {
-    "figure": "figure_02.png",
-    "cell": 15
+    "figure": "02_numeric_distributions.png"
   },
   {
-    "figure": "figure_03.png",
-    "cell": 21
+    "figure": "03_target_correlations.png"
   },
   {
-    "figure": "figure_04.png",
-    "cell": 24
+    "figure": "04_correlation_heatmaps.png"
   },
   {
-    "figure": "figure_05.png",
-    "cell": 27
+    "figure": "05_numeric_boxplots.png"
   },
   {
-    "figure": "figure_06.png",
-    "cell": 30
+    "figure": "06_category_churn_rates.png"
   },
   {
-    "figure": "figure_07.png",
-    "cell": 30
+    "figure": "07_tenure_churn_rates.png"
   },
   {
-    "figure": "figure_08.png",
-    "cell": 32
+    "figure": "08_pairplot.png"
   },
   {
-    "figure": "figure_09.png",
-    "cell": 32
+    "figure": "09_tenure_charge_trend.png"
   },
   {
-    "figure": "figure_10.png",
-    "cell": 40
+    "figure": "10_before_after_heatmaps.png"
   },
   {
-    "figure": "figure_11.png",
-    "cell": 40
+    "figure": "11_after_imputation_scatter.png"
   },
   {
-    "figure": "figure_12.png",
-    "cell": 44
+    "figure": "12_baseline_cv_comparison.png"
   },
   {
-    "figure": "figure_13.png",
-    "cell": 47
+    "figure": "13_training_cv_gap.png"
   },
   {
-    "figure": "figure_14.png",
-    "cell": 50
+    "figure": "14_candidate_cv_scores.png"
   },
   {
-    "figure": "figure_15.png",
-    "cell": 55
+    "figure": "15_final_test_comparison.png"
   },
   {
-    "figure": "figure_16.png",
-    "cell": 55
+    "figure": "16_confusion_matrices.png"
   },
   {
-    "figure": "figure_17.png",
-    "cell": 55
+    "figure": "17_roc_and_precision_recall.png"
   },
   {
-    "figure": "figure_18.png",
-    "cell": 58
+    "figure": "18_cv_permutation_importance.png"
   },
   {
-    "figure": "figure_19.png",
-    "cell": 58
+    "figure": "19_selected_feature_importance.png"
   }
 ]

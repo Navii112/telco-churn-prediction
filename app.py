@@ -2,12 +2,19 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib import font_manager
 import joblib
 from pathlib import Path
 from churn_pipeline import make_features
 
 st.set_page_config(page_title='통신 고객 이탈 여부 예측 시스템', layout='wide')
-plt.rcParams['font.family'] = 'Malgun Gothic'
+# Cloud Linux uses fonts-nanum from packages.txt; Windows uses Malgun Gothic.
+for font_path in Path('/usr/share/fonts/truetype/nanum').glob('*.ttf'):
+    font_manager.fontManager.addfont(str(font_path))
+available_fonts = {font.name for font in font_manager.fontManager.ttflist}
+font_name = next((name for name in ['Malgun Gothic', 'NanumGothic', 'Noto Sans CJK KR', 'AppleGothic']
+                  if name in available_fonts), 'DejaVu Sans')
+plt.rcParams['font.family'] = font_name
 plt.rcParams['axes.unicode_minus'] = False
 ROOT = Path(__file__).resolve().parent
 
@@ -37,6 +44,7 @@ main_tab1, main_tab2 = st.tabs(['이탈 위험도 시뮬레이터', '데이터 �
 with main_tab1:
     st.markdown('### 개별 고객 이탈 예측')
     st.write("아래에 고객의 정보를 입력한 후 '예측 실행' 버튼을 눌러주세요.")
+    st.caption('예측 점수는 실제 미래 이탈을 확정하는 값이 아닙니다. 판정 기준은 저장된 임계값 0.5입니다.')
     col1, col2 = st.columns([2, 1.1])
     with col1:
         st.subheader('고객 정보 입력')
@@ -64,6 +72,15 @@ with main_tab1:
         input_df = pd.DataFrame([row], columns=bundle['input_columns'])
         # 저장된 파이프라인에 인코딩과 스케일링이 포함되어 있습니다.
         input_features = make_features(input_df, bundle['variant'])
+        outside_ranges = []
+        for column, label in [('tenure', '가입 기간'), ('MonthlyCharges', '월 청구 금액'),
+                              ('TotalCharges', '누적 청구 금액')]:
+            lower, upper = float(df[column].min()), float(df[column].max())
+            if not lower <= row[column] <= upper:
+                outside_ranges.append(f'{label}: {lower:g}~{upper:g}')
+        if outside_ranges:
+            st.warning('제공 데이터의 관측 범위를 벗어난 입력입니다. 예측 해석에 주의하세요. '
+                       + ' / '.join(outside_ranges))
         with st.container(border=True):
             if st.button('이탈 여부 예측 실행', use_container_width=True, type='primary'):
                 probability = float(pipeline.predict_proba(input_features)[0, 1])
@@ -71,15 +88,16 @@ with main_tab1:
                 st.metric(label='예측 상태 결과', value='이탈 위험' if prediction == 1 else '이용 유지')
                 st.markdown('---')
                 if prediction == 1:
-                    st.error(f'**이 고객은 이탈 위험으로 예측되었습니다.**\n\n(이탈 확률: **{probability * 100:.2f}%**)')
+                    st.error(f'**이 고객은 이탈 위험으로 예측되었습니다.**\n\n(이탈 예측 점수: **{probability * 100:.2f}%**)')
                 else:
-                    st.success(f'**이 고객은 이용 유지로 예측되었습니다.**\n\n(유지 확률: **{(1 - probability) * 100:.2f}%**)')
+                    st.success(f'**이 고객은 이용 유지로 예측되었습니다.**\n\n(유지 예측 점수: **{(1 - probability) * 100:.2f}%**)')
             else:
                 st.info('왼쪽 정보를 채우신 후 버튼을 누르면 AI 분석 결과가 표시됩니다.')
 
 with main_tab2:
     st.markdown('### 통신 고객 데이터 시각화 및 인사이트')
     st.write('전체 데이터셋 분석을 기반으로 모델의 주요 변수와 고객 이용 현황 분포를 확인합니다.')
+    st.caption('피처 중요도는 모델이 활용한 정도이며 실제 해지 원인을 증명하지 않습니다. 분포 그래프의 고객 수와 이탈률을 구분해 해석하세요.')
     sub_tab1, sub_tab2, sub_tab3 = st.tabs(['AI 특성 중요도 분석', '요금 및 계약 유형 분석', '가입 기간 분포'])
     with sub_tab1:
         st.subheader('이탈 예측에 사용되는 주요 피처 (Feature Importance)')

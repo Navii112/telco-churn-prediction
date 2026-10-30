@@ -12,6 +12,7 @@
 
 - 작성자: 김동현
 - 최신 분석 및 모델 재학습 기준: [`churn_analysis.ipynb`](churn_analysis.ipynb)
+- 공통 학습·평가 함수: [`churn_pipeline.py`](churn_pipeline.py) — 노트북과 CLI가 같은 함수를 사용합니다.
 - 앱 실행 파일: [`app.py`](app.py)
 
 **바로 보기:** [시뮬레이터·대시보드 화면](#5-streamlit-기능) · [모델 개선 실험](#3-모델-개선-실험) · [실행 방법](#7-실행-방법)
@@ -72,6 +73,8 @@
 
 GridSearchCV에서 랜덤 포레스트 8개, XGBoost 16개 설정 조합을 비교했습니다. 별도로 XGBoost 깊이·트리 수 4조합도 비교했습니다. 최종 모델은 파생변수를 추가하지 않은 원본 입력 19개를 사용합니다.
 
+전체 자동 탐색 결과는 재학습 시 `notebook_tables/RF_GridSearch_results.csv`와 `notebook_tables/XGB_GridSearch_results.csv`로 저장됩니다. 각 설정의 평균·표준편차 AUC, 재현율, F1 및 학습 AUC를 확인할 수 있습니다.
+
 클래스 가중치를 적용한 랜덤 포레스트는 학습 내부 OOF 재현율이 **47.63% → 79.60%**로 높아졌지만 정밀도는 **67.49% → 52.80%**로 낮아졌습니다. 이탈 탐지를 늘리는 것과 오탐을 줄이는 것 사이의 균형을 확인했습니다.
 
 ### 최종 XGBoost 주요 설정
@@ -119,7 +122,7 @@ GridSearchCV에서 랜덤 포레스트 8개, XGBoost 16개 설정 조합을 비�
 
 가입 기간, 요금, 계약 및 서비스 정보를 입력하면 저장된 전처리·모델로 이탈 점수를 계산합니다. 점수가 저장된 임계값 `0.5` 이상이면 **이탈 위험**, 미만이면 **이용 유지**로 표시합니다.
 
-화면의 확률 표시는 모델 점수이며 실제 미래 행동을 확정하지 않습니다. 확률 보정은 수행하지 않았습니다.
+현재 앱 코드는 결과를 **예측 점수**로 표시하고, 입력이 제공 데이터의 관측 범위를 벗어나면 안내합니다. 확률 보정은 수행하지 않았으며 실제 미래 행동을 확정하지 않습니다. 위 캡처는 안내 문구를 보완하기 전의 실제 실행 화면입니다.
 
 ### 데이터 인사이트 대시보드
 
@@ -148,8 +151,9 @@ GitHub에 포함한 주요 파일과 폴더입니다.
 │   └── images/                      # README용 실제 앱 화면 2장
 ├── app.py                           # Streamlit 앱
 ├── churn_analysis.ipynb              # 최신 EDA·개선 실험·평가·모델 저장
-├── churn_pipeline.py                 # 기존 학습 CLI 및 앱에서 사용하는 make_features
+├── churn_pipeline.py                 # 노트북·CLI 공통 학습 함수 및 앱 피처 변환
 ├── requirements.txt                 # 앱·분석 라이브러리
+├── packages.txt                     # Linux 배포용 나눔 글꼴
 ├── WA_Fn-UseC_-Telco-Customer-Churn.csv
 ├── .streamlit/
 │   └── config.toml                   # Streamlit 설정
@@ -175,7 +179,14 @@ GitHub에 포함한 주요 파일과 폴더입니다.
 
 기록된 분석 환경은 Python **3.12.6**, pandas **3.1.0**, scikit-learn **1.9.1**, XGBoost **3.4.1**입니다. 저장된 모델을 사용할 때는 `requirements.txt`의 버전을 맞추는 것을 권장합니다.
 
-프로젝트 루트에서 다음 명령을 실행합니다. 아래는 **Windows PowerShell** 기준입니다.
+처음 다운로드한다면 아래 명령으로 저장소를 받고 프로젝트 폴더로 이동합니다. 아래는 **Windows PowerShell** 기준입니다.
+
+```powershell
+git clone https://github.com/Navii112/telco-churn-prediction.git
+cd telco-churn-prediction
+```
+
+프로젝트 루트에서 가상환경을 만들고 패키지를 설치합니다.
 
 ```powershell
 python -m venv .venv
@@ -218,23 +229,29 @@ VS Code에서도 해당 노트북을 열고 같은 가상환경 커널을 선택
 
 노트북은 현재 작업 폴더를 기준으로 CSV를 읽고 `outputs_80_20/`에 결과를 저장합니다. 전체 실행 시 기존 결과 표·그림·저장 모델이 갱신됩니다. 학습 모델을 갱신한 뒤에는 Streamlit을 종료하고 다시 실행해 캐시된 모델도 새로 불러오세요.
 
-### C. 기존 CLI 학습 코드 실행 (선택)
+### C. CLI로 같은 모델 실험 재현하기
 
-`churn_pipeline.py`의 학습 CLI에는 노트북의 최신 개별 파생변수·클래스 가중치·GridSearchCV 실험이 모두 반영되어 있지 않습니다. 최신 결과 재현에는 **노트북을 사용**하세요.
+노트북과 CLI는 `churn_pipeline.py`의 공통 전처리·학습·평가 함수를 사용합니다. CLI도 개별·통합 파생변수, 클래스 가중치, 수동 설정 및 GridSearchCV를 같은 조건으로 비교합니다. EDA 그래프와 단계별 설명은 노트북에서 확인합니다.
 
-기존 CLI를 별도로 확인하려면 최신 결과를 덮어쓰지 않도록 출력 경로를 지정합니다.
+기존 제출 결과를 보존하도록 CLI 기본 출력 폴더는 `outputs_cli/`로 분리했습니다.
 
 ```powershell
 .\.venv\Scripts\python.exe churn_pipeline.py --out outputs_cli
 ```
 
-이 명령은 별도 결과 폴더를 생성하며 앱이 읽는 모델 경로는 변경하지 않습니다. 출력 경로 없이 실행하면 기본 `outputs_80_20/`의 결과와 모델을 갱신하므로 유의하세요.
+이 명령은 별도 결과 폴더를 생성하며 앱이 읽는 모델 경로는 변경하지 않습니다. 자동 탐색 전체 설정 결과도 해당 폴더의 `notebook_tables/`에 저장합니다. `--out outputs_80_20`을 직접 지정하면 기존 결과가 갱신됩니다.
+
+### Streamlit Community Cloud 배포
+
+이 저장소로 배포할 때는 브랜치 `main`, 실행 파일 `app.py`, Python `3.12`를 선택합니다. `requirements.txt`는 Python 패키지를, `packages.txt`는 Linux용 `fonts-nanum`을 설치합니다. 앱은 설치된 나눔 글꼴을 등록해 그래프에 사용합니다. [Streamlit 의존성 안내](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies)
+
+기존 배포 앱이 다른 저장소에 연결되어 있다면 이 저장소의 변경 사항은 자동 반영되지 않습니다. 배포 설정의 연결 저장소를 확인해야 합니다.
 
 ### 실행 시 확인할 사항
 
 - **모델 파일을 찾을 수 없음:** `outputs_80_20/selected_model.joblib`을 준비하거나 노트북을 끝까지 실행합니다.
 - **CSV를 찾을 수 없음:** 파일명이 일치하는지, 프로젝트 루트에서 실행했는지 확인합니다.
-- **한글 그래프 글꼴:** 앱은 Windows의 `Malgun Gothic`을 사용합니다. 다른 운영체제에서는 설치된 한글 글꼴로 설정을 조정해야 할 수 있습니다.
+- **한글 그래프 글꼴:** Windows에서는 `Malgun Gothic`, Cloud Linux에서는 `packages.txt`로 설치한 `NanumGothic`을 사용합니다. 다른 Linux 환경에서는 나눔 글꼴을 별도로 설치하세요.
 
 ## 8. GitHub에 포함할 파일
 
@@ -243,7 +260,7 @@ VS Code에서도 해당 노트북을 열고 같은 가상환경 커널을 선택
 | 구분 | 포함 파일 |
 |---|---|
 | 소개·코드 | `README.md`, `.gitignore`, `app.py`, `churn_pipeline.py`, `churn_analysis.ipynb`, `requirements.txt` |
-| 데이터·설정 | 원본 CSV, `.streamlit/config.toml` |
+| 데이터·설정 | 원본 CSV, `.streamlit/config.toml`, `packages.txt` |
 | 앱용 모델 | `outputs_80_20/selected_model.joblib` |
 | 앱 화면 | `docs/images/churn-simulator.png`, `docs/images/insight-dashboard.png` |
 | 평가 근거 | CV·테스트 결과, 예측값, 분할 기록, 선정 기록, 실행 메타데이터 |
@@ -271,3 +288,7 @@ git add --dry-run .
 ## 10. 배운 점
 
 파생변수를 추가하거나 모델을 복잡하게 만든다고 항상 성능이 좋아지지는 않았습니다. 같은 조건에서 변경 전후를 비교하고, 성능이 낮아진 실험도 기록하는 과정이 중요했습니다. 또한 이탈 고객을 더 많이 찾는 것과 정확하게 지목하는 것 사이의 균형을 확인했습니다.
+
+## 11. 출처 및 재사용 안내
+
+데이터 출처는 앞서 연결한 Kaggle의 Telco Customer Churn 페이지입니다. 데이터의 이용 조건은 원본 배포 페이지에서 확인하세요. 코드 라이선스는 아직 별도로 지정하지 않았습니다.
