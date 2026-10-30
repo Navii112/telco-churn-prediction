@@ -4,6 +4,12 @@
 
 고객 정보를 직접 입력하는 **Streamlit 이탈 위험도 시뮬레이터**와 **데이터 인사이트 대시보드**를 제공합니다.
 
+### ▶ 설치 없이 직접 실행하기
+
+**[Streamlit 시뮬레이터·대시보드 실행하기](https://telco-churn-znwkcae2vy754zuumjr7p4.streamlit.app/)**
+
+브라우저에서 고객 정보를 입력하고 **이탈 여부 예측 실행**을 누르면 결과를 확인할 수 있습니다. **데이터 인사이트 대시보드** 탭에서는 주요 피처와 고객 분포를 살펴볼 수 있습니다.
+
 - 작성자: 김동현
 - 최신 분석 및 모델 재학습 기준: [`churn_analysis.ipynb`](churn_analysis.ipynb)
 - 앱 실행 파일: [`app.py`](app.py)
@@ -102,6 +108,8 @@ GridSearchCV에서 랜덤 포레스트 8개, XGBoost 16개 설정 조합을 비�
 ## 5. Streamlit 기능
 
 ### 이탈 위험도 시뮬레이터
+
+👉 **[배포된 앱에서 직접 예측해 보기](https://telco-churn-znwkcae2vy754zuumjr7p4.streamlit.app/)**
 
 ![고객 정보를 입력하고 개별 예측 결과를 확인하는 Streamlit 시뮬레이터](docs/images/churn-simulator.png)
 
