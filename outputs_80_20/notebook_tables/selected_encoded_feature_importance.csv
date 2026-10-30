@@ -1,0 +1,31 @@
+﻿EncodedFeature,Importance
+categorical__InternetService_Fiber optic,0.17052661
+categorical__PaymentMethod_Electronic check,0.14747065
+categorical__Contract_Two year,0.13615625
+categorical__Contract_One year,0.10339301
+categorical__DeviceProtection_No internet service,0.059113648
+numeric__tenure,0.055663027
+categorical__InternetService_No,0.054767963
+categorical__OnlineBackup_No internet service,0.039469723
+numeric__TotalCharges,0.035496116
+categorical__PaperlessBilling_Yes,0.033104956
+categorical__OnlineSecurity_Yes,0.030275654
+categorical__StreamingTV_Yes,0.016966095
+categorical__StreamingMovies_Yes,0.016904647
+numeric__MonthlyCharges,0.013339012
+categorical__TechSupport_Yes,0.011897547
+categorical__MultipleLines_Yes,0.011144231
+categorical__Dependents_Yes,0.011012157
+categorical__PhoneService_Yes,0.01034522
+categorical__SeniorCitizen_1,0.009505867
+categorical__MultipleLines_No phone service,0.008996786
+categorical__OnlineBackup_Yes,0.008373856
+categorical__gender_Male,0.0060560317
+categorical__PaymentMethod_Mailed check,0.005286478
+categorical__PaymentMethod_Credit card (automatic),0.00473441
+categorical__DeviceProtection_Yes,0.0
+categorical__Partner_Yes,0.0
+categorical__OnlineSecurity_No internet service,0.0
+categorical__StreamingMovies_No internet service,0.0
+categorical__StreamingTV_No internet service,0.0
+categorical__TechSupport_No internet service,0.0

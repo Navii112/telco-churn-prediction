@@ -1,0 +1,17 @@
+﻿변수,고유 범주 수,최빈 범주,최빈 범주 고객 수
+gender,2,Male,2833
+SeniorCitizen,2,0,4714
+Partner,2,No,2905
+Dependents,2,No,3955
+PhoneService,2,Yes,5075
+MultipleLines,3,No,2685
+InternetService,3,Fiber optic,2483
+OnlineSecurity,3,No,2797
+OnlineBackup,3,No,2442
+DeviceProtection,3,No,2472
+TechSupport,3,No,2771
+StreamingTV,3,No,2226
+StreamingMovies,3,No,2217
+Contract,3,Month-to-month,3102
+PaperlessBilling,2,Yes,3331
+PaymentMethod,4,Electronic check,1891

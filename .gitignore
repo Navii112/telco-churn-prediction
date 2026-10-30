@@ -1,0 +1,47 @@
+# Only publish the project files listed below.
+# Existing local files are kept; new files must be explicitly allowed.
+/*
+!/.gitignore
+!/README.md
+!/app.py
+!/churn_pipeline.py
+!/churn_analysis.ipynb
+!/requirements.txt
+!/WA_Fn-UseC_-Telco-Customer-Churn.csv
+
+# Streamlit settings; do not include secrets.toml.
+!/.streamlit/
+/.streamlit/*
+!/.streamlit/config.toml
+
+# Current notebook results and the model required by app.py.
+!/outputs_80_20/
+/outputs_80_20/*
+!/outputs_80_20/selected_model.joblib
+!/outputs_80_20/selection_before_test.json
+!/outputs_80_20/cv_comparison.csv
+!/outputs_80_20/cv_oof_predictions.csv
+!/outputs_80_20/cv_permutation_importance.csv
+!/outputs_80_20/test_metrics.csv
+!/outputs_80_20/test_predictions.csv
+!/outputs_80_20/split_membership.csv
+!/outputs_80_20/run_metadata.json
+!/outputs_80_20/notebook_figures/
+/outputs_80_20/notebook_figures/*
+!/outputs_80_20/notebook_figures/*.png
+!/outputs_80_20/notebook_tables/
+/outputs_80_20/notebook_tables/*
+!/outputs_80_20/notebook_tables/*.csv
+!/outputs_80_20/notebook_tables/execution_figure_manifest.json
+
+# Never publish credentials, caches, or editor/OS temporary files.
+**/.env
+**/.env.*
+**/secrets.toml
+**/__pycache__/
+**/*.py[cod]
+**/.ipynb_checkpoints/
+**/.DS_Store
+**/Thumbs.db
+**/~$*
+**/*.tmp

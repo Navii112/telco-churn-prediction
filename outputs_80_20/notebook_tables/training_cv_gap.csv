@@ -1,0 +1,4 @@
+﻿Model,Train Accuracy,OOF Accuracy,Train AUC,CV mean AUC,AUC gap
+LogisticRegression,0.8055,0.803,0.8492,0.8458,0.0034
+RandomForest,0.8252,0.8001,0.8891,0.8469,0.0422
+XGBoost,0.8237,0.8009,0.8843,0.8464,0.0378

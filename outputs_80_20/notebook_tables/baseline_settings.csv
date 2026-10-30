@@ -1,0 +1,4 @@
+﻿모델,적용 목적,설정
+LogisticRegression,선형 분류 기준,max_iter=2000
+RandomForest,트리 앙상블 비교,"300개, max_depth=8, min_samples_leaf=5"
+XGBoost,부스팅 분류 비교,"300개, max_depth=3, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8"
